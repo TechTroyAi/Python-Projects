@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Downloads Organizer</title>
+
+<style>
+  :root {
+    --bg: #060d1f;
+    --card: #0a1227;
+    --card2: #0e1a35;
+    --border: #1c2b4d;
+    --text: #d4e2ef;
+    --muted: #859fc0;
+    --accent1: #315381;
+    --accent2: #4c638c;
+    --danger: #f87171;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(49, 83, 129, .35), transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, rgba(76, 99, 140, .28), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 16px 60px;
+  }
+
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 30px; }
+  header h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 800;
+    letter-spacing: -.5px;
+    background: linear-gradient(90deg, #cee0f4, #859fc0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 22px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: #fff;
+    transition: transform .12s ease, filter .12s ease;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:hover { filter: brightness(1.1); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary {
+    background: linear-gradient(90deg, #315381, #4c638c);
+    box-shadow: 0 6px 20px rgba(49, 83, 129, .45);
+  }
+  .btn-ghost { background: var(--card2); border: 1px solid var(--border); color: var(--text); }
+  .btn-sm { padding: 8px 14px; font-size: .85rem; }
+
+  .check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: .9rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .check input { width: 17px; height: 17px; accent-color: var(--accent1); cursor: pointer; }
+
+  #dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--card2);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  #dropzone.dragover {
+    border-color: var(--accent2);
+    background: rgba(76, 99, 140, .14);
+  }
+  #dropzone .big { font-size: 2.4rem; }
+  #dropzone p { color: var(--muted); margin-top: 8px; font-size: .95rem; }
+
+  #message {
+    display: none;
+    border-radius: 12px;
+    padding: 13px 16px;
+    margin-bottom: 16px;
+    font-size: .92rem;
+  }
+  #message.info    { display: block; background: rgba(76, 99, 140, .18);  border: 1px solid rgba(76, 99, 140, .45); }
+  #message.error   { display: block; background: rgba(248, 113, 113, .1); border: 1px solid rgba(248, 113, 113, .45); }
+  #message.success { display: block; background: rgba(74, 222, 128, .1); border: 1px solid rgba(74, 222, 128, .4); }
+
+  #stats {
+    display: none;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .stat .num { font-size: 1.6rem; font-weight: 800; }
+  .stat .lbl { color: var(--muted); font-size: .78rem; margin-top: 2px; }
+
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .cat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--cat-color, var(--accent1));
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .cat-card header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .cat-card h3 { font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+  .badge {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: .78rem;
+    font-weight: 700;
+  }
+  .cat-card ul { list-style: none; }
+  .cat-card li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .86rem;
+    padding: 6px 8px;
+    border-radius: 8px;
+    word-break: break-all;
+  }
+  .cat-card li:nth-child(odd) { background: rgba(255, 255, 255, .03); }
+  .cat-card li .sz { margin-left: auto; color: var(--muted); font-size: .76rem; white-space: nowrap; }
+  .cat-card li .rn { color: #fbbf24; font-size: .76rem; white-space: nowrap; }
+
+  .acts { display: flex; gap: 6px; margin-left: auto; }
+  .mini {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-size: .9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color .12s ease, color .12s ease;
+  }
+  .mini:hover { border-color: var(--accent2); color: var(--text); }
+  .mini.del:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* Trash */
+  #trashCard { border-left: 5px solid var(--danger); }
+  .trash-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .trash-head h3 { font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+  #trashList { list-style: none; }
+  #trashList li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .86rem;
+    padding: 6px 8px;
+    border-radius: 8px;
+    word-break: break-all;
+    color: var(--muted);
+  }
+  #trashList li:nth-child(odd) { background: rgba(255, 255, 255, .03); }
+  #trashList li .sz { margin-left: auto; font-size: .76rem; white-space: nowrap; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    border-radius: 12px;
+    display: flex; gap: 14px; align-items: center;
+    z-index: 60;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
+    font-size: .9rem;
+  }
+  #toast[hidden] { display: none; }
+  #toastUndo {
+    background: var(--accent1); color: #fff;
+    border: none; border-radius: 8px;
+    padding: 6px 14px; font-weight: 700; cursor: pointer;
+  }
+
+  .empty { color: var(--muted); text-align: center; padding: 10px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>📁 Downloads Organizer</h1>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <button class="btn btn-primary" id="btnOpen">📂 Open folder</button>
+      <button class="btn btn-primary" id="btnOrganize">🪄 Organize</button>
+      <label class="check">
+        <input type="checkbox" id="dryRun" checked />
+        Preview only
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="dropzone">
+      <div class="big">📥</div>
+      <p>Drop files here<br />or click to choose</p>
+      <input type="file" id="fileInput" multiple hidden />
+    </div>
+  </div>
+
+  <div id="message"></div>
+
+  <div id="stats">
+    <div class="stat"><div class="num" id="statFiles">0</div><div class="lbl">Files</div></div>
+    <div class="stat"><div class="num" id="statCats">0</div><div class="lbl">Folders</div></div>
+    <div class="stat"><div class="num" id="statSize">0 B</div><div class="lbl">Size</div></div>
+  </div>
+
+  <div id="grid"></div>
+
+  <div class="card" id="trashCard" hidden>
+    <div class="trash-head">
+      <h3>🗑️ Trash</h3>
+      <div class="row">
+        <button class="btn btn-ghost btn-sm" id="btnRestoreAll">↩️ Restore all</button>
+        <button class="btn btn-ghost btn-sm" id="btnEmpty">🧹 Empty</button>
+      </div>
+    </div>
+    <ul id="trashList"></ul>
+  </div>
+
+</div>
+
+<div id="toast" hidden>
+  <span id="toastText">Moved to trash</span>
+  <button id="toastUndo">Undo</button>
+</div>
+
+<script>
+/* ============ RULES ============ */
+const CATEGORIES = [
+  { name: "Images",     emoji: "🖼️", color: "#4c638c",
+    exts: [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp", ".heic", ".ico", ".tiff"] },
+  { name: "Videos",     emoji: "🎬", color: "#859fc0",
+    exts: [".mp4", ".mkv", ".mov", ".avi", ".wmv", ".flv", ".webm", ".m4v", ".3gp"] },
+  { name: "Music",      emoji: "🎵", color: "#315381",
+    exts: [".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma"] },
+  { name: "Documents",  emoji: "📄", color: "#cee0f4",
+    exts: [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".md", ".csv", ".rtf", ".odt"] },
+  { name: "Archives",   emoji: "🗜️", color: "#6b82ab",
+    exts: [".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz"] },
+  { name: "Installers", emoji: "💿", color: "#4c638c",
+    exts: [".exe", ".msi", ".dmg", ".deb", ".apk", ".pkg", ".appimage"] },
+  { name: "Code",       emoji: "💻", color: "#859fc0",
+    exts: [".py", ".js", ".html", ".css", ".json", ".xml", ".ipynb", ".c", ".cpp", ".java", ".ts", ".sql"] },
+  { name: "Torrents",   emoji: "🧲", color: "#315381",
+    exts: [".torrent"] },
+  { name: "Others",     emoji: "📦", color: "#859fc0", exts: [] }
+];
+
+const THIS_FILE = "smart-downloads-organizer.html";
+
+/* ============ STATE ============ */
+let uid = 0;
+const state = { files: [], trash: [], rootHandle: null, trashDir: null };
+let lastDeleted = [];
+let toastTimer = null;
+
+/* ============ HELPERS ============ */
+function getCategory(filename) {
+  const dot = filename.lastIndexOf(".");
+  const ext = dot >= 0 ? filename.slice(dot).toLowerCase() : "";
+  for (const cat of CATEGORIES) if (cat.exts.includes(ext)) return cat;
+  return CATEGORIES[CATEGORIES.length - 1];
+}
+
+function categoryOf(f) {
+  if (f.override) {
+    const found = CATEGORIES.find(c => c.name === f.override);
+    if (found) return found;
+  }
+  return getCategory(f.name);
+}
+
+function humanSize(bytes) {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + " " + units[i];
+}
+
+function showMessage(text, type = "info") {
+  const el = document.getElementById("message");
+  el.className = type;
+  el.innerHTML = text;
+  el.style.display = "block";
+}
+function hideMessage() { document.getElementById("message").style.display = "none"; }
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function toast(text) {
+  document.getElementById("toastText").textContent = text;
+  const t = document.getElementById("toast");
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 3500);
+}
+
+function hasFolderAccess() { return "showDirectoryPicker" in window; }
+
+// Open the OS folder picker. Returns null if blocked or cancelled.
+async function pickFolder() {
+  try {
+    return await window.showDirectoryPicker({ mode: "readwrite" });
+  } catch (err) {
+    if (err.name === "AbortError") return null;
+    showMessage("⚠️ Blocked here. Download this file and open it in Chrome/Edge.", "error");
+    return null;
+  }
+}
+
+/* ============ FILESYSTEM HELPERS ============ */
+// Make sure a name is unique inside a folder: "a.txt" -> "a (1).txt"
+async function getUniqueName(dirHandle, name) {
+  const dot = name.lastIndexOf(".");
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : "";
+  let candidate = name, i = 1;
+  while (true) {
+    try { await dirHandle.getFileHandle(candidate); candidate = `${stem} (${i})${ext}`; i++; }
+    catch (err) { if (err.name === "NotFoundError") return candidate; throw err; }
+  }
+}
+
+// Move a file handle into a folder with a new name (with fallback).
+async function moveHandle(handle, destDir, newName) {
+  try {
+    await handle.move(destDir, newName);
+  } catch (err) {
+    const file = await handle.getFile();
+    const dest = await destDir.getFileHandle(newName, { create: true });
+    const w = await dest.createWritable();
+    await w.write(file);
+    await w.close();
+    await handle.remove();
+  }
+}
+
+// Recursively collect files from a folder into `out`.
+async function scanDir(dirHandle, relDir, rootHandle, out) {
+  for await (const [name, handle] of dirHandle.entries()) {
+    if (name.startsWith(".")) continue;
+    if (handle.kind === "file") {
+      if (name === THIS_FILE) continue;
+      const f = await handle.getFile();
+      out.push({ id: ++uid, name, size: f.size, handle, parent: dirHandle, rootHandle, relDir });
+    } else if (handle.kind === "directory") {
+      await scanDir(handle, relDir ? relDir + "/" + name : name, rootHandle, out);
+    }
+  }
+}
+
+/* ============ RENDER ============ */
+function refresh() { drawGrid(); drawTrash(); }
+
+function drawGrid() {
+  hideMessage();
+
+  const files = state.files;
+  const groups = new Map();
+  for (const f of files) {
+    const cat = categoryOf(f);
+    if (!groups.has(cat.name)) groups.set(cat.name, { cat, files: [] });
+    groups.get(cat.name).files.push(f);
+  }
+
+  const totalSize = files.reduce((s, f) => s + (f.size || 0), 0);
+  document.getElementById("statFiles").textContent = files.length;
+  document.getElementById("statCats").textContent = groups.size;
+  document.getElementById("statSize").textContent = humanSize(totalSize);
+  document.getElementById("stats").style.display = files.length ? "grid" : "none";
+
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  if (!files.length) { grid.innerHTML = '<p class="empty">No files</p>'; return; }
+
+  const sorted = [...groups.values()].sort((a, b) => b.files.length - a.files.length);
+
+  for (const { cat, files: list } of sorted) {
+    const card = document.createElement("div");
+    card.className = "cat-card";
+    card.style.setProperty("--cat-color", cat.color);
+
+    const items = list.map(f => {
+      const size = f.size ? `<span class="sz">${humanSize(f.size)}</span>` : "";
+      const path = f.relDir ? `<span class="rn" style="color:var(--muted)">${escapeHtml(f.relDir)}/</span>` : "";
+      return `<li><span>${cat.emoji}</span>${path}<span>${escapeHtml(f.name)}</span>${size}
+                <span class="acts">
+                  <button class="mini" data-act="move" data-id="${f.id}" title="Move">📂</button>
+                  <button class="mini del" data-act="del" data-id="${f.id}" title="Delete">🗑️</button>
+                </span></li>`;
+    }).join("");
+
+    card.innerHTML = `
+      <header>
+        <h3>${cat.emoji} ${cat.name}</h3>
+        <span class="badge">${list.length}</span>
+      </header>
+      <ul>${items}</ul>`;
+    grid.appendChild(card);
+  }
+}
+
+function drawTrash() {
+  const card = document.getElementById("trashCard");
+  const list = document.getElementById("trashList");
+  if (!state.trash.length) { card.hidden = true; list.innerHTML = ""; return; }
+  card.hidden = false;
+  list.innerHTML = state.trash.map(f =>
+    `<li><span>📦</span><span>${escapeHtml(f.name)}</span>
+       <span class="sz">${f.size ? humanSize(f.size) : ""}</span>
+       <span class="acts"><button class="mini" data-act="restore" data-id="${f.id}" title="Restore">↩️</button></span></li>`
+  ).join("");
+}
+
+/* ============ ACTIONS ============ */
+function findFile(id) { return state.files.find(x => x.id === id); }
+
+// 📂 Move — opens the OS folder picker, then moves the file there.
+async function moveFileAction(id) {
+  const f = findFile(id);
+  if (!f) return;
+
+  if (!hasFolderAccess()) { showMessage("⚠️ Needs Chrome or Edge.", "error"); return; }
+  if (!f.handle) { toast("Preview only — open a folder to move."); return; }
+
+  const dest = await pickFolder();
+  if (!dest) return;
+
+  const newName = await getUniqueName(dest, f.name);
+  await moveHandle(f.handle, dest, newName);
+
+  f.name = newName;
+  f.parent = dest;
+  f.relDir = "";
+  refresh();
+  toast(`✅ Moved to ${dest.name}`);
+}
+
+// 🗑️ Delete — moves the file into a hidden .trash folder (undoable).
+async function deleteAction(id) {
+  const f = findFile(id);
+  if (!f) return;
+
+  if (f.handle && state.rootHandle) {
+    if (!state.trashDir) {
+      state.trashDir = await state.rootHandle.getDirectoryHandle(".trash", { create: true });
+    }
+    const trashName = await getUniqueName(state.trashDir, f.name);
+    await moveHandle(f.handle, state.trashDir, trashName);
+    state.trash.unshift({ id: f.id, name: f.name, size: f.size, handle: f.handle,
+                          parent: f.parent, relDir: f.relDir, real: true });
+  } else if (f.handle) {
+    toast("Open a folder first to delete safely.");
+    return;
+  } else {
+    state.trash.unshift({ id: f.id, name: f.name, size: f.size, handle: null, real: false });
+  }
+
+  state.files = state.files.filter(x => x.id !== id);
+  lastDeleted = [id];
+  refresh();
+  toast("Moved to trash");
+}
+
+async function restoreOne(id) {
+  const i = state.trash.findIndex(t => t.id === id);
+  if (i === -1) return;
+  const it = state.trash.splice(i, 1)[0];
+  await putBack(it);
+  refresh();
+}
+
+async function restoreAll() {
+  const items = state.trash.splice(0, state.trash.length);
+  for (const it of items) await putBack(it);
+  refresh();
+}
+
+async function putBack(it) {
+  let name = it.name;
+  if (it.real && it.parent && it.handle) {
+    name = await getUniqueName(it.parent, it.name);
+    await moveHandle(it.handle, it.parent, name);
+  }
+  state.files.push({ id: it.id, name, size: it.size, handle: it.handle,
+                     parent: it.parent, rootHandle: state.rootHandle, relDir: it.relDir || "" });
+}
+
+async function emptyTrash() {
+  const items = state.trash.splice(0, state.trash.length);
+  for (const it of items) {
+    if (it.real && it.handle) { try { await it.handle.remove(); } catch (e) {} }
+  }
+  refresh();
+}
+
+async function undoDelete() {
+  document.getElementById("toast").hidden = true;
+  if (!lastDeleted.length) return;
+  const ids = new Set(lastDeleted);
+  const items = state.trash.filter(t => ids.has(t.id));
+  state.trash = state.trash.filter(t => !ids.has(t.id));
+  for (const it of items) await putBack(it);
+  lastDeleted = [];
+  refresh();
+}
+
+/* ============ OPEN FOLDER ============ */
+async function openFolder() {
+  if (!hasFolderAccess()) { showMessage("⚠️ Needs Chrome or Edge.", "error"); return; }
+  const root = await pickFolder();
+  if (!root) return;
+
+  state.rootHandle = root;
+  state.trashDir = null;
+  const files = [];
+  await scanDir(root, "", root, files);
+  state.files = files;
+  state.trash = [];
+  refresh();
+  showMessage(`📂 ${root.name} — ${files.length} files`, "info");
+}
+
+/* ============ ORGANIZE (auto-sort) ============ */
+async function organize() {
+  const dryRun = document.getElementById("dryRun").checked;
+  if (!hasFolderAccess()) { showMessage("⚠️ Needs Chrome or Edge.", "error"); return; }
+
+  let root = state.rootHandle;
+  if (!root) {
+    root = await pickFolder();
+    if (!root) return;
+    state.rootHandle = root;
+    state.trashDir = null;
+  }
+
+  // Top-level files only (files already inside subfolders stay put).
+  const topFiles = [];
+  for await (const [name, handle] of root.entries()) {
+    if (name.startsWith(".") || name === THIS_FILE) continue;
+    if (handle.kind === "file") topFiles.push(handle);
+  }
+
+  if (!topFiles.length) { showMessage("No files to organize.", "info"); return; }
+
+  let moved = 0;
+  const plan = {};
+
+  for (const fh of topFiles) {
+    const cat = getCategory(fh.name);
+    if (dryRun) {
+      plan[cat.name] = (plan[cat.name] || 0) + 1;
+    } else {
+      const dir = await root.getDirectoryHandle(cat.name, { create: true });
+      const newName = await getUniqueName(dir, fh.name);
+      await moveHandle(fh, dir, newName);
+      moved++;
+    }
+  }
+
+  // Re-scan so the grid shows the real, current state.
+  const files = [];
+  await scanDir(root, "", root, files);
+  state.files = files;
+  state.trash = [];
+  refresh();
+
+  if (dryRun) {
+    const summary = Object.entries(plan)
+      .sort((a, b) => b[1] - a[1])
+      .map(([c, n]) => `${c}: ${n}`)
+      .join(" · ");
+    showMessage(`🧪 Preview — ${summary}`, "info");
+  } else {
+    showMessage(`✅ Moved ${moved} files.`, "success");
+  }
+}
+
+/* ============ EVENTS ============ */
+document.getElementById("btnOpen").addEventListener("click", openFolder);
+document.getElementById("btnOrganize").addEventListener("click", organize);
+document.getElementById("btnRestoreAll").addEventListener("click", restoreAll);
+document.getElementById("btnEmpty").addEventListener("click", emptyTrash);
+document.getElementById("toastUndo").addEventListener("click", undoDelete);
+
+document.getElementById("grid").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  if (btn.dataset.act === "move") moveFileAction(id);
+  if (btn.dataset.act === "del") deleteAction(id);
+});
+
+document.getElementById("trashList").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-act='restore']");
+  if (btn) restoreOne(Number(btn.dataset.id));
+});
+
+/* ============ DRAG & DROP ============ */
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+
+dropzone.addEventListener("click", async () => {
+  if ("showOpenFilePicker" in window) {
+    try {
+      const hs = await window.showOpenFilePicker({ multiple: true });
+      for (const h of hs) {
+        const f = await h.getFile();
+        state.files.push({ id: ++uid, name: f.name, size: f.size, handle: h, parent: null, rootHandle: state.rootHandle, relDir: "" });
+      }
+      refresh();
+      return;
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      // fall through to the basic input
+    }
+  }
+  fileInput.click();
+});
+
+fileInput.addEventListener("change", () => {
+  for (const f of fileInput.files) {
+    state.files.push({ id: ++uid, name: f.name, size: f.size, handle: null, parent: null, rootHandle: state.rootHandle, relDir: "" });
+  }
+  fileInput.value = "";
+  refresh();
+});
+
+["dragenter", "dragover"].forEach(ev =>
+  dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add("dragover"); })
+);
+["dragleave", "drop"].forEach(ev =>
+  dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove("dragover"); })
+);
+
+dropzone.addEventListener("drop", async e => {
+  const added = [];
+  for (const item of e.dataTransfer.items) {
+    if (item.kind !== "file") continue;
+    let h = null;
+    try { h = await item.getAsFileSystemHandle(); } catch (err) {}
+    if (h && h.kind === "file") {
+      const f = await h.getFile();
+      added.push({ id: ++uid, name: f.name, size: f.size, handle: h, parent: null, rootHandle: state.rootHandle, relDir: "" });
+    } else if (h && h.kind === "directory") {
+      await scanDir(h, h.name, h, added);
+    } else {
+      const f = item.getAsFile();
+      added.push({ id: ++uid, name: f.name, size: f.size, handle: null, parent: null, rootHandle: state.rootHandle, relDir: "" });
+    }
+  }
+  state.files.push(...added);
+  refresh();
+});
+
+/* ============ START ============ */
+refresh();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2d3eb56dfb29894',t:'MTc4NzA4NzU3Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
