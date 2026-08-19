@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CSV Cleaner</title>
+
+<style>
+  :root {
+    --bg: #f0f8fb;
+    --surface: #ffffff;
+    --surface2: #e8f4f8;
+    --border: #d6e8ef;
+    --text: #0b2a36;
+    --muted: #5a7d8c;
+    --accent: #0ea5b7;
+    --accent2: #22c3d6;
+    --good: #10b981;
+    --bad: #ef4444;
+    --warn: #f59e0b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    background:
+      radial-gradient(1000px 500px at 90% -10%, rgba(34, 195, 214, .14), transparent 60%),
+      radial-gradient(800px 400px at -10% 0%, rgba(14, 165, 183, .12), transparent 55%),
+      linear-gradient(180deg, var(--bg), #e3f2f7);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 16px 70px;
+  }
+
+  .wrap { max-width: 1020px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 26px; }
+  header h1 {
+    font-size: clamp(1.8rem, 4vw, 2.5rem);
+    font-weight: 800;
+    letter-spacing: -.5px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 6px 24px rgba(11, 42, 54, .06);
+  }
+
+  .sect {
+    font-size: .76rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 800;
+    margin-bottom: 12px;
+  }
+
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: .95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .12s ease, filter .12s ease;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:hover { filter: brightness(1.06); }
+  .btn-primary {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #fff;
+    box-shadow: 0 8px 22px rgba(14, 165, 183, .3);
+  }
+  .btn-ghost {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  /* ---------- dropzone ---------- */
+  #dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--surface2);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  #dropzone.dragover { border-color: var(--accent2); background: rgba(34, 195, 214, .08); }
+  #dropzone .big { font-size: 2.2rem; }
+  #dropzone p { color: var(--muted); margin-top: 8px; font-size: .92rem; }
+
+  #paste {
+    width: 100%;
+    min-height: 110px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: .82rem;
+    padding: 12px;
+    outline: none;
+    resize: vertical;
+    display: none;
+  }
+  #paste:focus { border-color: var(--accent2); }
+
+  /* ---------- issues ---------- */
+  #issues { display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 6px 13px;
+    font-size: .8rem;
+    font-weight: 700;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .badge.warn { background: #fef3e2; border-color: #fcd9a0; color: #b45309; }
+  .badge.bad  { background: #fdecec; border-color: #f6c2c2; color: #b91c1c; }
+  .badge.good { background: #e7f8f1; border-color: #b5ead3; color: #047857; }
+
+  /* ---------- options ---------- */
+  .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+  .opt {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 10px 13px;
+    cursor: pointer;
+    font-size: .88rem;
+    user-select: none;
+    transition: border-color .12s ease, background .12s ease;
+  }
+  .opt:hover { border-color: var(--accent2); }
+  .opt input { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
+  .opt.on { background: #e0f4f8; border-color: var(--accent2); }
+
+  .fill-row { margin-top: 12px; display: none; align-items: center; gap: 8px; }
+  .fill-row input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    padding: 9px 12px;
+    font-size: .9rem;
+    outline: none;
+    width: 180px;
+  }
+  .fill-row input:focus { border-color: var(--accent2); }
+
+  /* ---------- stats ---------- */
+  #stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    padding: 13px;
+    text-align: center;
+    box-shadow: 0 6px 24px rgba(11, 42, 54, .06);
+  }
+  .stat .v { font-size: 1.35rem; font-weight: 800; color: var(--text); }
+  .stat .l { color: var(--muted); font-size: .72rem; margin-top: 3px; }
+
+  /* ---------- table ---------- */
+  .table-wrap {
+    overflow: auto;
+    max-height: 340px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: .8rem; }
+  th {
+    position: sticky;
+    top: 0;
+    background: var(--accent);
+    color: #fff;
+    text-align: left;
+    padding: 9px 12px;
+    white-space: nowrap;
+    font-weight: 700;
+    z-index: 2;
+  }
+  td {
+    padding: 7px 12px;
+    border-top: 1px solid var(--border);
+    white-space: nowrap;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  tr:nth-child(even) td { background: var(--surface2); }
+  td.empty { color: var(--muted); font-style: italic; }
+  .row-num {
+    color: var(--muted);
+    font-size: .72rem;
+    padding: 0 10px;
+    text-align: right;
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  #rowNote { color: var(--muted); font-size: .76rem; margin-top: 8px; text-align: center; }
+
+  .empty-note { color: var(--muted); text-align: center; padding: 24px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>🧹 CSV Cleaner</h1>
+  </header>
+
+  <div class="card">
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn btn-ghost" id="btnPaste">📝 Paste</button>
+      <button class="btn btn-ghost" id="btnSample">🎲 Sample</button>
+      <button class="btn btn-ghost" id="btnClear" style="margin-left:auto">✕</button>
+    </div>
+    <div id="dropzone">
+      <div class="big">📄</div>
+      <p>Drop a .csv here<br />or click to choose</p>
+      <input type="file" id="fileInput" accept=".csv,text/csv,text/plain" hidden />
+    </div>
+    <textarea id="paste" placeholder="Paste CSV here, then press Load ⬇️"></textarea>
+    <div id="pasteActions" style="display:none;margin-top:10px">
+      <button class="btn btn-primary" id="btnLoadPaste">Load</button>
+    </div>
+  </div>
+
+  <div class="card" id="issueCard" hidden>
+    <div class="sect">Found</div>
+    <div id="issues"></div>
+  </div>
+
+  <div class="card" id="optCard" hidden>
+    <div class="sect">Clean</div>
+    <div class="opts">
+      <label class="opt" id="optTrim"><input type="checkbox" id="cTrim" checked />✂️ Trim spaces</label>
+      <label class="opt" id="optEmptyRows"><input type="checkbox" id="cEmptyRows" checked />🗑️ Remove empty rows</label>
+      <label class="opt" id="optDupRows"><input type="checkbox" id="cDupRows" checked />👯 Remove duplicate rows</label>
+      <label class="opt" id="optEmptyCols"><input type="checkbox" id="cEmptyCols" checked />📭 Remove empty columns</label>
+      <label class="opt" id="optDupCols"><input type="checkbox" id="cDupCols" />🗂️ Remove duplicate columns</label>
+      <label class="opt" id="optFill"><input type="checkbox" id="cFill" />✏️ Fill empty cells</label>
+    </div>
+    <div class="fill-row" id="fillRow">
+      <span style="color:var(--muted);font-size:.88rem">with</span>
+      <input id="fillValue" placeholder="e.g. 0 or N/A" />
+    </div>
+  </div>
+
+  <div id="stats"></div>
+
+  <div class="card" id="tableCard" hidden>
+    <div class="sect">Preview</div>
+    <div class="table-wrap" id="tableWrap"></div>
+    <div id="rowNote"></div>
+  </div>
+
+  <div class="card" id="downloadCard" hidden>
+    <button class="btn btn-primary" id="btnDownload" style="width:100%">⬇️ Download cleaned CSV</button>
+  </div>
+
+</div>
+
+<script>
+/* ============ state ============ */
+let rawText = "";
+let rows = [];          // parsed rows (array of arrays)
+let cleaned = [];
+let options = { trim: true, emptyRows: true, dupRows: true, emptyCols: true, dupCols: false, fill: false, fillValue: "" };
+
+const el = id => document.getElementById(id);
+const MAX_ROWS = 100;
+
+/* ============ CSV parse / serialize ============ */
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = "", inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ""; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(field); field = "";
+        if (row.some(f => f !== "")) rows.push(row);
+        row = [];
+      } else field += c;
+    }
+  }
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    if (row.some(f => f !== "")) rows.push(row);
+  }
+  return rows;
+}
+
+function toCSV(rows) {
+  const esc = (c) => /[",\n\r]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c;
+  return rows.map(r => r.map(esc).join(",")).join("\n");
+}
+
+/* ============ detect issues ============ */
+function detect(rows) {
+  const issues = [];
+  if (!rows.length) return issues;
+
+  let emptyCells = 0, whitespaceCells = 0;
+  for (const r of rows) for (const c of r) {
+    if (c === "") emptyCells++;
+    else if (c !== c.trim()) whitespaceCells++;
+  }
+  if (emptyCells) issues.push({ label: emptyCells + " empty cells", cls: "bad" });
+
+  const emptyRowCount = rows.filter(r => r.every(c => c === "")).length;
+  if (emptyRowCount) issues.push({ label: emptyRowCount + " empty rows", cls: "warn" });
+
+  const seen = new Set();
+  let dupRows = 0;
+  for (const r of rows) {
+    const k = JSON.stringify(r);
+    if (seen.has(k)) dupRows++;
+    else seen.add(k);
+  }
+  if (dupRows) issues.push({ label: dupRows + " duplicate rows", cls: "warn" });
+
+  const header = rows[0] || [];
+  const names = header.map(h => h.trim().toLowerCase());
+  const dupCols = names.length - new Set(names).size;
+  if (dupCols) issues.push({ label: dupCols + " duplicate columns", cls: "warn" });
+
+  const nCols = Math.max(...rows.map(r => r.length), 0);
+  const ragged = rows.filter(r => r.length !== nCols).length;
+  if (ragged) issues.push({ label: ragged + " uneven rows", cls: "warn" });
+
+  if (whitespaceCells) issues.push({ label: whitespaceCells + " cells with stray spaces", cls: "warn" });
+
+  return issues;
+}
+
+/* ============ clean ============ */
+function cleanRows(rows, opts) {
+  let r = rows.map(row => row.slice());
+  if (opts.trim) r = r.map(row => row.map(c => c.trim()));
+  if (opts.emptyRows) r = r.filter(row => !row.every(c => c === ""));
+  if (opts.dupRows) {
+    const seen = new Set();
+    r = r.filter(row => {
+      const k = JSON.stringify(row);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+  let nCols = Math.max(...r.map(row => row.length), 0);
+
+  if (opts.emptyCols) {
+    const keep = [];
+    for (let c = 0; c < nCols; c++) {
+      if (!r.every(row => (row[c] ?? "") === "")) keep.push(c);
+    }
+    r = r.map(row => keep.map(c => row[c] ?? ""));
+    nCols = keep.length;
+  }
+  if (opts.dupCols) {
+    const header = r[0] || [];
+    const seen = new Set();
+    const keep = [];
+    for (let c = 0; c < nCols; c++) {
+      const key = (header[c] ?? "").trim().toLowerCase() || "col" + (c + 1);
+      if (!seen.has(key)) { seen.add(key); keep.push(c); }
+    }
+    r = r.map(row => keep.map(c => row[c] ?? ""));
+  }
+  if (opts.fill && opts.fillValue !== "") {
+    r = r.map(row => row.map(c => (c === "" ? opts.fillValue : c)));
+  }
+  return r;
+}
+
+/* ============ render ============ */
+function refresh() {
+  if (!rows.length) {
+    el("issueCard").hidden = true;
+    el("optCard").hidden = true;
+    el("tableCard").hidden = true;
+    el("downloadCard").hidden = true;
+    el("stats").innerHTML = "";
+    return;
+  }
+
+  cleaned = cleanRows(rows, options);
+
+  // issues
+  const issues = detect(rows);
+  el("issueCard").hidden = issues.length === 0;
+  el("issues").innerHTML = issues.length
+    ? issues.map(i => `<span class="badge ${i.cls}">${i.label}</span>`).join("")
+    : '<span class="badge good">✓ All clean</span>';
+
+  el("optCard").hidden = false;
+
+  // stats
+  const rawCells = rows.reduce((s, r) => s + r.length, 0);
+  const cleanCells = cleaned.reduce((s, r) => s + r.length, 0);
+  const removedRows = rows.length - cleaned.length;
+  const removedCells = rawCells - cleanCells;
+
+  el("stats").innerHTML = `
+    <div class="stat"><div class="v">${rows.length}</div><div class="l">Rows</div></div>
+    <div class="stat"><div class="v">${cleaned.length}</div><div class="l">After</div></div>
+    <div class="stat"><div class="v">${Math.max(...rows.map(r => r.length), 0)}</div><div class="l">Columns</div></div>
+    <div class="stat"><div class="v" style="color:var(--good)">-${removedRows}</div><div class="l">Rows removed</div></div>
+    <div class="stat"><div class="v" style="color:var(--good)">-${removedCells}</div><div class="l">Cells cleaned</div></div>`;
+
+  // table
+  el("tableCard").hidden = false;
+  const shown = cleaned.slice(0, MAX_ROWS);
+  const header = shown[0] || [];
+  let html = "<table><thead><tr><th>#</th>";
+  for (const h of header) html += `<th>${escapeHtml(h || "")}</th>`;
+  html += "</tr></thead><tbody>";
+  for (let i = 1; i < shown.length; i++) {
+    html += `<tr><td class="row-num">${i}</td>`;
+    for (const c of shown[i]) html += c === "" ? '<td class="empty">—</td>' : `<td>${escapeHtml(c)}</td>`;
+    html += "</tr>";
+  }
+  html += "</tbody></table>";
+  el("tableWrap").innerHTML = html;
+  el("rowNote").textContent = cleaned.length > MAX_ROWS
+    ? "showing first " + MAX_ROWS + " of " + cleaned.length + " rows"
+    : "";
+
+  el("downloadCard").hidden = false;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ============ load ============ */
+function loadText(text) {
+  rawText = text;
+  rows = parseCSV(text);
+  refresh();
+}
+
+/* ============ events ============ */
+const dz = el("dropzone");
+const fi = el("fileInput");
+
+dz.addEventListener("click", () => fi.click());
+
+fi.addEventListener("change", () => {
+  const f = fi.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => loadText(reader.result);
+  reader.readAsText(f);
+  fi.value = "";
+});
+
+["dragenter", "dragover"].forEach(ev =>
+  dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add("dragover"); })
+);
+["dragleave", "drop"].forEach(ev =>
+  dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove("dragover"); })
+);
+dz.addEventListener("drop", e => {
+  const f = e.dataTransfer.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => loadText(reader.result);
+  reader.readAsText(f);
+});
+
+/* paste mode */
+el("btnPaste").addEventListener("click", () => {
+  const p = el("paste");
+  const show = p.style.display === "none";
+  p.style.display = show ? "block" : "none";
+  dz.style.display = show ? "none" : "";
+  el("pasteActions").style.display = show ? "block" : "none";
+});
+el("btnLoadPaste").addEventListener("click", () => {
+  loadText(el("paste").value);
+});
+
+/* sample data */
+el("btnSample").addEventListener("click", () => {
+  loadText(`Name,Email,Age,City,Name
+  Alice ,alice@mail.com,25, Davao,Alice
+Bob,bob@mail.com,,Manila,Bob
+"Smith, John",john@mail.com,30,Cebu,Smith
+  Alice,alice@mail.com,25,Davao,Alice
+,,,,
+Carla,carla@mail.com,28,,Carla
+Dennis,dennis@mail.com,,Quezon City,Dennis
+Dennis,dennis@mail.com,,Quezon City,Dennis`);
+});
+
+el("btnClear").addEventListener("click", () => {
+  rawText = ""; rows = []; cleaned = [];
+  refresh();
+});
+
+/* options */
+const optMap = {
+  cTrim: "trim", cEmptyRows: "emptyRows", cDupRows: "dupRows",
+  cEmptyCols: "emptyCols", cDupCols: "dupCols", cFill: "fill"
+};
+for (const [cb, key] of Object.entries(optMap)) {
+  el(cb).addEventListener("change", () => {
+    options[key] = el(cb).checked;
+    el("fillRow").style.display = el("cFill").checked ? "flex" : "none";
+    refresh();
+  });
+}
+el("fillValue").addEventListener("input", () => {
+  options.fillValue = el("fillValue").value;
+  refresh();
+});
+
+/* download */
+el("btnDownload").addEventListener("click", () => {
+  const csv = toCSV(cleaned);
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "cleaned.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+refresh();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2d9b4a1de57febe',t:'MTc4NzE0ODI0Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Image Resizer</title>
+
+<style>
+  :root {
+    --bg: #0e0820;
+    --surface: #150d2e;
+    --surface2: #1d133c;
+    --border: #2c1f55;
+    --text: #efe8ff;
+    --muted: #9886c4;
+    --accent: #8b5cf6;
+    --accent2: #a78bfa;
+    --good: #34d399;
+    --bad: #fb7185;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    background:
+      radial-gradient(1100px 600px at 85% -10%, rgba(139, 92, 246, .22), transparent 60%),
+      radial-gradient(900px 500px at -10% 0%, rgba(167, 139, 250, .14), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 16px 70px;
+  }
+
+  .wrap { max-width: 1000px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 26px; }
+  header h1 {
+    font-size: clamp(1.8rem, 4vw, 2.5rem);
+    font-weight: 800;
+    letter-spacing: -.5px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .sect {
+    font-size: .76rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 800;
+    margin-bottom: 12px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: .95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .12s ease, filter .12s ease;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:hover { filter: brightness(1.08); }
+  .btn-primary {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #fff;
+    box-shadow: 0 8px 22px rgba(139, 92, 246, .35);
+  }
+  .btn-ghost {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  /* dropzone */
+  #dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--surface2);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  #dropzone.dragover { border-color: var(--accent2); background: rgba(139, 92, 246, .12); }
+  #dropzone .big { font-size: 2.2rem; }
+  #dropzone p { color: var(--muted); margin-top: 8px; font-size: .92rem; }
+
+  /* settings */
+  .set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .field-label { color: var(--muted); font-size: .76rem; font-weight: 800; letter-spacing: .04em; margin-bottom: 6px; }
+  select, input[type="text"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: .92rem;
+    outline: none;
+  }
+  select:focus, input[type="text"]:focus { border-color: var(--accent2); }
+  input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+  .qval { color: var(--accent2); font-weight: 800; font-size: .9rem; }
+
+  .check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-size: .88rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .check input { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
+
+  /* results */
+  #results {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 14px;
+  }
+  .img-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .img-card .thumb {
+    width: 100%;
+    height: 150px;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .img-card .thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .img-card .meta { padding: 12px; }
+  .img-card .nm {
+    font-size: .82rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 6px;
+  }
+  .img-card .dims { font-size: .78rem; color: var(--muted); margin-bottom: 4px; }
+  .img-card .dims b { color: var(--accent2); }
+  .img-card .sz { font-size: .76rem; color: var(--muted); margin-bottom: 10px; }
+  .img-card .sz b { color: var(--good); }
+  .img-card .actions { display: flex; gap: 8px; }
+  .img-card .actions .btn { flex: 1; padding: 9px; font-size: .82rem; }
+  .img-card .err { color: var(--bad); font-size: .78rem; padding: 12px; }
+
+  .empty { color: var(--muted); text-align: center; padding: 24px 0; }
+
+  #downloadAll { width: 100%; }
+
+  #note {
+    background: rgba(139, 92, 246, .1);
+    border: 1px solid rgba(139, 92, 246, .35);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: .8rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>🖼️ Image Resizer</h1>
+  </header>
+
+  <div class="card">
+    <div id="dropzone">
+      <div class="big">📥</div>
+      <p>Drop images here<br />or click to choose</p>
+      <input type="file" id="fileInput" accept="image/*" multiple hidden />
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn btn-ghost" id="btnAdd">➕ Add images</button>
+      <button class="btn btn-ghost" id="btnFolder">📁 Add folder</button>
+      <button class="btn btn-ghost" id="btnClear" style="margin-left:auto">✕ Clear</button>
+      <input type="file" id="folderInput" webkitdirectory multiple hidden />
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sect">Settings</div>
+    <div class="set-grid">
+      <div>
+        <div class="field-label">MODE</div>
+        <select id="mode">
+          <option>Max width</option>
+          <option>Max height</option>
+          <option>Max side</option>
+          <option>Exact (WxH)</option>
+          <option>Percent</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">VALUE</div>
+        <input type="text" id="value" value="800" />
+      </div>
+      <div>
+        <div class="field-label">FORMAT</div>
+        <select id="format">
+          <option>Keep original</option>
+          <option>JPG</option>
+          <option>PNG</option>
+          <option>WEBP</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">QUALITY <span class="qval" id="qval">85</span></div>
+        <input type="range" id="quality" min="1" max="100" value="85" />
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <label class="check"><input type="checkbox" id="aspect" checked />Keep aspect ratio</label>
+      <label class="check"><input type="checkbox" id="onlyShrink" checked />Only shrink</label>
+    </div>
+  </div>
+
+  <div id="note">Tip: select a whole folder's images and drag them all at once.</div>
+
+  <div class="card" id="dlCard" hidden>
+    <button class="btn btn-primary" id="downloadAll">⬇️ Download all</button>
+  </div>
+
+  <div id="results"></div>
+
+</div>
+
+<script>
+/* ============ state ============ */
+let originals = [];     // { id, name, file, url }
+let resized = [];       // { id, name, blob, url, w, h, size, origW, origH, origSize, ext, error }
+let settings = { mode: "Max width", value: "800", format: "Keep original", quality: 85, aspect: true, onlyShrink: true };
+let debounceTimer = null;
+
+const el = id => document.getElementById(id);
+
+/* ============ helpers ============ */
+function humanSize(n) {
+  if (!n) return "0 B";
+  const u = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(n) / Math.log(1024));
+  return (n / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + " " + u[i];
+}
+
+/* ============ pure size math (testable) ============ */
+function computeSize(w, h, s) {
+  if (s.mode === "Max width") {
+    if (s.onlyShrink && w <= s.value) return [w, h];
+    const k = s.value / w;
+    return [Math.round(w * k), Math.round(h * k)];
+  }
+  if (s.mode === "Max height") {
+    if (s.onlyShrink && h <= s.value) return [w, h];
+    const k = s.value / h;
+    return [Math.round(w * k), Math.round(h * k)];
+  }
+  if (s.mode === "Max side") {
+    const big = Math.max(w, h);
+    if (s.onlyShrink && big <= s.value) return [w, h];
+    const k = s.value / big;
+    return [Math.round(w * k), Math.round(h * k)];
+  }
+  if (s.mode === "Percent") {
+    const k = s.value / 100;
+    return [Math.round(w * k), Math.round(h * k)];
+  }
+  // Exact (WxH)
+  const [tw, th] = s.value;
+  if (s.aspect) {
+    const k = Math.min(tw / w, th / h);
+    return [Math.round(w * k), Math.round(h * k)];
+  }
+  return [tw, th];
+}
+
+function outputMime(file, fmt) {
+  if (fmt === "JPG") return "image/jpeg";
+  if (fmt === "PNG") return "image/png";
+  if (fmt === "WEBP") return "image/webp";
+  // keep original: only use canvas-supported types
+  const t = file.type;
+  if (t === "image/jpeg") return "image/jpeg";
+  if (t === "image/png") return "image/png";
+  if (t === "image/webp") return "image/webp";
+  return "image/png";
+}
+function outputExt(mime) {
+  return mime === "image/jpeg" ? ".jpg" : mime === "image/webp" ? ".webp" : ".png";
+}
+
+/* ============ parse settings value ============ */
+function parseValue(mode, raw) {
+  raw = raw.trim();
+  if (mode === "Exact (WxH)") {
+    const parts = raw.toLowerCase().replace("x", " ").split(/\s+/);
+    if (parts.length === 2) {
+      const w = parseInt(parts[0]), h = parseInt(parts[1]);
+      if (w > 0 && h > 0) return [w, h];
+    }
+    return null;
+  }
+  const v = parseFloat(raw);
+  return v > 0 ? v : null;
+}
+
+/* ============ resize one image ============ */
+async function resizeOne(o, s) {
+  const bitmap = await createImageBitmap(o.file);   // respects EXIF orientation
+  const [w, h] = [bitmap.width, bitmap.height];
+  const val = parseValue(s.mode, s.value);
+  if (!val) throw new Error("bad value");
+  const cfg = { ...s, value: val };
+  const [nw, nh] = computeSize(w, h, cfg);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = nw;
+  canvas.height = nh;
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, 0, 0, nw, nh);
+
+  const mime = outputMime(o.file, s.format);
+  const blob = await new Promise(res => canvas.toBlob(res, mime, s.quality / 100));
+  bitmap.close();
+
+  return {
+    id: o.id, name: o.name, blob, w: nw, h: nh,
+    size: blob.size, origW: w, origH: h, origSize: o.file.size,
+    ext: outputExt(mime), mime
+  };
+}
+
+/* ============ process all ============ */
+async function processAll() {
+  const results = [];
+  for (const o of originals) {
+    try {
+      results.push(await resizeOne(o, settings));
+    } catch (e) {
+      results.push({ id: o.id, name: o.name, error: true });
+    }
+  }
+  resized = results;
+  render();
+}
+
+/* ============ render ============ */
+function render() {
+  const box = el("results");
+  if (!resized.length) {
+    box.innerHTML = '<div class="empty">No images yet — drop some! 🖼️</div>';
+    el("dlCard").hidden = true;
+    return;
+  }
+  el("dlCard").hidden = false;
+
+  box.innerHTML = resized.map(r => {
+    if (r.error) {
+      return `<div class="img-card"><div class="err">⚠️ ${escapeHtml(r.name)} — couldn't process</div></div>`;
+    }
+    return `<div class="img-card">
+              <div class="thumb"><img src="${r.url}" alt="" /></div>
+              <div class="meta">
+                <div class="nm" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>
+                <div class="dims"><b>${r.origW}×${r.origH}</b> → <b>${r.w}×${r.h}</b></div>
+                <div class="sz">${humanSize(r.origSize)} → <b>${humanSize(r.size)}</b></div>
+                <div class="actions">
+                  <button class="btn btn-primary" data-dl="${r.id}">⬇️</button>
+                </div>
+              </div>
+            </div>`;
+  }).join("");
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ============ download ============ */
+function downloadOne(r) {
+  const a = document.createElement("a");
+  a.href = r.url;
+  const stem = r.name.replace(/\.[^.]+$/, "");
+  a.download = stem + r.ext;
+  a.click();
+}
+
+function downloadAll() {
+  resized.filter(r => !r.error).forEach((r, i) => {
+    setTimeout(() => downloadOne(r), i * 400);
+  });
+}
+
+/* ============ load files ============ */
+function loadFiles(fileList) {
+  const list = [...fileList].filter(f => f.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|bmp|tiff?)$/i.test(f.name));
+  if (!list.length) return;
+  originals = list.map(f => ({ id: Math.random(), name: f.name, file: f }));
+  el("note").style.display = "block";
+  processAll();
+}
+
+/* ============ events ============ */
+const dz = el("dropzone");
+const fi = el("fileInput");
+const fdi = el("folderInput");
+
+el("btnAdd").addEventListener("click", () => fi.click());
+el("btnFolder").addEventListener("click", () => fdi.click());
+dz.addEventListener("click", () => fi.click());
+
+fi.addEventListener("change", () => { loadFiles(fi.files); fi.value = ""; });
+fdi.addEventListener("change", () => { loadFiles(fdi.files); fdi.value = ""; });
+
+["dragenter", "dragover"].forEach(ev =>
+  dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add("dragover"); })
+);
+["dragleave", "drop"].forEach(ev =>
+  dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove("dragover"); })
+);
+dz.addEventListener("drop", e => loadFiles(e.dataTransfer.files));
+
+el("btnClear").addEventListener("click", () => {
+  originals = []; resized = [];
+  render();
+  el("note").style.display = "none";
+});
+
+/* settings changes -> reprocess (debounced) */
+function settingsChanged() {
+  settings.mode = el("mode").value;
+  settings.format = el("format").value;
+  settings.quality = Number(el("quality").value);
+  settings.aspect = el("aspect").checked;
+  settings.onlyShrink = el("onlyShrink").checked;
+  el("qval").textContent = settings.quality;
+  settings.value = el("value").value;
+  if (!originals.length) return;
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(processAll, 250);
+}
+
+for (const id of ["mode", "format", "quality", "value"]) {
+  el(id).addEventListener("input", settingsChanged);
+  el(id).addEventListener("change", settingsChanged);
+}
+el("aspect").addEventListener("change", settingsChanged);
+el("onlyShrink").addEventListener("change", settingsChanged);
+
+/* per-image download + download all */
+el("results").addEventListener("click", e => {
+  const b = e.target.closest("[data-dl]");
+  if (!b) return;
+  const r = resized.find(x => x.id == b.dataset.dl);
+  if (r) downloadOne(r);
+});
+el("downloadAll").addEventListener("click", downloadAll);
+
+render();
+</script>
+</body>
+</html>

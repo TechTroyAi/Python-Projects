@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Duplicate Finder</title>
+
+<style>
+  :root {
+    --bg: #04120c;
+    --surface: #071a12;
+    --surface2: #0c241a;
+    --border: #14372a;
+    --text: #dff7ea;
+    --muted: #7aa08c;
+    --accent: #10b981;
+    --accent2: #34d399;
+    --good: #10b981;
+    --bad: #f87171;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    background:
+      radial-gradient(1100px 600px at 85% -10%, rgba(16, 185, 129, .12), transparent 60%),
+      radial-gradient(900px 500px at -10% 0%, rgba(52, 211, 153, .08), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 16px 60px;
+  }
+
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 800;
+    letter-spacing: -.5px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: 12px;
+    padding: 13px 20px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .12s ease, filter .12s ease;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:hover { filter: brightness(1.08); }
+  .btn-primary {
+    background: linear-gradient(90deg, #0ea56e, var(--accent));
+    color: #04120c;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, .3);
+  }
+  .btn-ghost {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-danger {
+    background: var(--bad);
+    color: #fff;
+    padding: 12px 20px;
+    font-size: .95rem;
+  }
+
+  #dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--surface2);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  #dropzone.dragover {
+    border-color: var(--accent2);
+    background: rgba(16, 185, 129, .08);
+  }
+  #dropzone .big { font-size: 2.3rem; }
+  #dropzone p { color: var(--muted); margin-top: 8px; font-size: .95rem; }
+
+  #summary {
+    color: var(--muted);
+    font-size: .9rem;
+    margin: 10px 2px 14px;
+    min-height: 1.2em;
+  }
+  #summary b { color: var(--accent); }
+
+  /* ---------- groups ---------- */
+  #results { display: flex; flex-direction: column; gap: 12px; }
+  .group { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .group-head {
+    background: var(--accent);
+    color: #04120c;
+    font-size: .85rem;
+    font-weight: 800;
+    padding: 8px 14px;
+  }
+  .frow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-top: 1px solid var(--border);
+    font-size: .88rem;
+  }
+  .frow input { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .frow .info { flex: 1; min-width: 0; }
+  .frow .nm { word-break: break-all; }
+  .frow .pt { color: var(--muted); font-size: .76rem; word-break: break-all; }
+  .keep {
+    color: var(--accent);
+    font-size: .76rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .sz { color: var(--muted); font-size: .78rem; white-space: nowrap; }
+
+  .empty { color: var(--muted); text-align: center; padding: 24px 0; }
+
+  #note {
+    background: rgba(16, 185, 129, .08);
+    border: 1px solid rgba(16, 185, 129, .3);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: .8rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  /* bottom bar */
+  #actionbar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  #actionbar .spacer { flex: 1; }
+
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 12px 18px;
+    border-radius: 12px;
+    display: none;
+    z-index: 60;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5);
+    font-size: .9rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>🧹 Duplicate Finder</h1>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <button class="btn btn-primary" id="btnOpen">📂 Open folder</button>
+      <span style="color:var(--muted);font-size:.85rem">scan a real folder (Chrome/Edge)</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="dropzone">
+      <div class="big">📥</div>
+      <p>Drop files here<br />or click to choose</p>
+      <input type="file" id="fileInput" multiple hidden />
+    </div>
+  </div>
+
+  <div id="note" hidden></div>
+
+  <div id="summary"></div>
+  <div id="results"></div>
+
+  <div id="actionbar">
+    <button class="btn btn-danger" id="btnDelete">🗑️ Delete selected</button>
+    <button class="btn btn-ghost" id="btnRestore">↩️ Restore all</button>
+    <span class="spacer"></span>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============ state ============ */
+let mode = "drop";            // "drop" | "folder"
+let rootHandle = null;
+let trashDir = null;
+let trashEntries = [];        // { handle, name, originalDir }
+let files = [];               // { id, name, rel, size, file?, handle?, parent? }
+let groups = [];              // { size, entries: [file objects] }
+let checked = new Set();      // ids selected for deletion
+let uid = 0;
+
+const el = id => document.getElementById(id);
+
+/* ============ helpers ============ */
+function humanSize(n) {
+  if (!n) return "0 B";
+  const u = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(n) / Math.log(1024));
+  return (n / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + " " + u[i];
+}
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+function toast(msg) {
+  const t = el("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  clearTimeout(window._tt);
+  window._tt = setTimeout(() => { t.style.display = "none"; }, 2500);
+}
+
+/* ============ hashing ============ */
+async function sha256(file) {
+  const buf = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+/* ============ grouping ============ */
+async function computeGroups(list) {
+  // 1. group by size
+  const bySize = new Map();
+  for (const f of list) {
+    if (!f.size) continue;               // skip empty
+    if (!bySize.has(f.size)) bySize.set(f.size, []);
+    bySize.get(f.size).push(f);
+  }
+  // 2. hash only same-size candidates
+  const byHash = new Map();
+  const candidates = [...bySize.values()].filter(a => a.length >= 2).flat();
+  for (let i = 0; i < candidates.length; i++) {
+    const f = candidates[i];
+    el("summary").innerHTML = `Hashing… ${i + 1}/${candidates.length}`;
+    await new Promise(r => setTimeout(r, 0)); // let UI breathe
+    try {
+      const h = await sha256(f.file || await f.handle.getFile());
+      const key = h + ":" + f.size;
+      if (!byHash.has(key)) byHash.set(key, []);
+      byHash.get(key).push(f);
+    } catch (e) { /* unreadable file */ }
+  }
+  const gs = [];
+  for (const entries of byHash.values()) {
+    if (entries.length >= 2) gs.push({ size: entries[0].size, entries });
+  }
+  gs.sort((a, b) => (b.size * (b.entries.length - 1)) - (a.size * (a.entries.length - 1)));
+  return gs;
+}
+
+/* ============ render ============ */
+function render() {
+  const box = el("results");
+  const sum = el("summary");
+  checked.clear();
+
+  if (!groups.length) {
+    box.innerHTML = '<div class="empty">No duplicates found 🎉</div>';
+    sum.innerHTML = files.length ? `${files.length} files · 0 duplicates` : "";
+    el("actionbar").style.display = "none";
+    return;
+  }
+
+  const dupes = groups.reduce((s, g) => s + g.entries.length - 1, 0);
+  const wasted = groups.reduce((s, g) => s + g.size * (g.entries.length - 1), 0);
+  sum.innerHTML = `<b>${groups.length}</b> groups · <b>${dupes}</b> duplicates · <b>${humanSize(wasted)}</b> to reclaim`;
+
+  box.innerHTML = groups.map(g => {
+    const rows = g.entries.map((f, i) => {
+      const keep = i === 0;
+      const id = f.id;
+      if (!keep) checked.add(id);
+      const cid = "cb_" + id;
+      const path = f.rel || "";
+      return `<div class="frow">
+                <input type="checkbox" id="${cid}" ${keep ? "disabled" : "checked"} onchange="toggle(${id}, this.checked)" />
+                <span class="info">
+                  <div class="nm">${escapeHtml(f.name)}</div>
+                  <div class="pt">${escapeHtml(path)}</div>
+                </span>
+                ${keep ? '<span class="keep">keep</span>' : ""}
+                <span class="sz">${humanSize(f.size)}</span>
+              </div>`;
+    }).join("");
+    return `<div class="group">
+              <div class="group-head">${humanSize(g.size)} · ${g.entries.length} copies</div>
+              ${rows}
+            </div>`;
+  }).join("");
+
+  el("actionbar").style.display = "flex";
+  el("btnRestore").style.display = trashEntries.length ? "" : "none";
+  updateDeleteButton();
+}
+
+window.toggle = (id, on) => {
+  if (on) checked.add(id); else checked.delete(id);
+  updateDeleteButton();
+};
+
+function updateDeleteButton() {
+  const n = checked.size;
+  el("btnDelete").textContent = n ? `🗑️ Delete selected (${n})` : "🗑️ Delete selected";
+  el("btnDelete").style.opacity = n ? 1 : 0.5;
+}
+
+/* ============ drop mode ============ */
+const dz = el("dropzone");
+const fi = el("fileInput");
+
+dz.addEventListener("click", () => fi.click());
+
+fi.addEventListener("change", () => {
+  ingest([...fi.files]);
+  fi.value = "";
+});
+
+["dragenter", "dragover"].forEach(ev =>
+  dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add("dragover"); })
+);
+["dragleave", "drop"].forEach(ev =>
+  dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove("dragover"); })
+);
+
+dz.addEventListener("drop", e => {
+  ingest([...e.dataTransfer.files]);
+});
+
+async function ingest(list) {
+  mode = "drop";
+  rootHandle = null;
+  trashEntries = [];
+  files = list.map(f => ({
+    id: ++uid, name: f.name, rel: f.webkitRelativePath || "", size: f.size, file: f
+  }));
+  el("note").hidden = false;
+  el("note").innerHTML = "Preview mode — delete is disabled for dropped files. Use <b>Open folder</b> to delete real files.";
+  groups = await computeGroups(files);
+  render();
+}
+
+/* ============ folder mode ============ */
+el("btnOpen").addEventListener("click", async () => {
+  if (!("showDirectoryPicker" in window)) {
+    toast("Needs Chrome or Edge");
+    return;
+  }
+  let root;
+  try {
+    root = await window.showDirectoryPicker({ mode: "readwrite" });
+  } catch (e) { return; }
+
+  mode = "folder";
+  rootHandle = root;
+  trashDir = null;
+  trashEntries = [];
+  files = [];
+  el("summary").innerHTML = "Scanning…";
+  await walk(root, "", files);
+  el("note").hidden = true;
+  groups = await computeGroups(files);
+  render();
+});
+
+async function walk(dirHandle, rel, out) {
+  for await (const [name, handle] of dirHandle.entries()) {
+    if (name.startsWith(".")) continue;
+    if (handle.kind === "file") {
+      try {
+        const f = await handle.getFile();
+        out.push({ id: ++uid, name, rel, size: f.size, handle, parent: dirHandle });
+      } catch (e) {}
+    } else if (handle.kind === "directory") {
+      await walk(handle, rel ? rel + "/" + name : name, out);
+    }
+  }
+}
+
+/* ============ delete / restore (folder mode) ============ */
+el("btnDelete").addEventListener("click", async () => {
+  if (mode !== "folder" || !rootHandle || !checked.size) return;
+
+  if (!trashDir) {
+    trashDir = await rootHandle.getDirectoryHandle(".dupe_trash", { create: true });
+  }
+
+  let removed = 0;
+  const remaining = [];
+  for (const f of files) {
+    if (checked.has(f.id) && f.handle) {
+      const uname = await uniqueName(trashDir, f.name);
+      try {
+        await f.handle.move(trashDir, uname);
+        trashEntries.push({ handle: f.handle, name: f.name, originalDir: f.parent });
+        removed++;
+      } catch (e) { remaining.push(f); }
+    } else {
+      remaining.push(f);
+    }
+  }
+
+  files = remaining;
+  groups = await computeGroups(files);
+  render();
+  toast(removed ? `🗑️ Moved ${removed} to trash` : "Nothing moved");
+});
+
+el("btnRestore").addEventListener("click", async () => {
+  let restored = 0;
+  const failed = [];
+  for (const t of trashEntries) {
+    try {
+      const uname = await uniqueName(t.originalDir, t.name);
+      await t.handle.move(t.originalDir, uname);
+      restored++;
+    } catch (e) { failed.push(t); }
+  }
+  trashEntries = failed;
+
+  // rescan
+  files = [];
+  el("summary").innerHTML = "Scanning…";
+  await walk(rootHandle, "", files);
+  groups = await computeGroups(files);
+  render();
+  toast(`↩️ Restored ${restored}`);
+});
+
+async function uniqueName(dir, name) {
+  const dot = name.lastIndexOf(".");
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : "";
+  let candidate = name, i = 1;
+  while (true) {
+    try { await dir.getFileHandle(candidate); candidate = `${stem} (${i})${ext}`; i++; }
+    catch (e) { return candidate; }
+  }
+}
+
+/* ============ start ============ */
+render();
+</script>
+</body>
+</html>
