@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Uptime Monitor</title>
+
+<style>
+  :root {
+    --bg: #060d1f;
+    --card: #0a1227;
+    --card2: #0e1a35;
+    --border: #1c2b4d;
+    --text: #d4e2ef;
+    --muted: #859fc0;
+    --accent: #315381;
+    --accent2: #4c638c;
+    --up: #34d399;
+    --down: #f87171;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(49, 83, 129, .35), transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, rgba(76, 99, 140, .28), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 16px 60px;
+  }
+
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 800;
+    letter-spacing: -.5px;
+    background: linear-gradient(90deg, #cee0f4, #859fc0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .form { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 10px; }
+  @media (max-width: 600px) { .form { grid-template-columns: 1fr; } }
+
+  .field {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    padding: 13px 14px;
+    font-size: 1rem;
+    width: 100%;
+    outline: none;
+  }
+  .field::placeholder { color: var(--muted); }
+  .field:focus { border-color: var(--accent2); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: 12px;
+    padding: 13px 20px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: #fff;
+    transition: transform .12s ease, filter .12s ease;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:hover { filter: brightness(1.1); }
+  .btn-primary {
+    background: linear-gradient(90deg, #315381, #4c638c);
+    box-shadow: 0 6px 20px rgba(49, 83, 129, .45);
+  }
+  .btn-ghost {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 11px 16px;
+    font-size: .9rem;
+  }
+
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  #summary {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
+    font-weight: 700;
+    font-size: .9rem;
+  }
+
+  /* ---------- site rows ---------- */
+  #list { list-style: none; }
+  #list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 12px;
+  }
+  #list li:nth-child(odd) { background: rgba(255, 255, 255, .03); }
+
+  .dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+  .dot.up { background: var(--up); box-shadow: 0 0 10px rgba(52, 211, 153, .6); }
+  .dot.down { background: var(--down); box-shadow: 0 0 10px rgba(248, 113, 113, .6); }
+  .dot.idle { background: var(--muted); }
+
+  .info { flex: 1; min-width: 0; }
+  .info .nm { font-weight: 700; font-size: .95rem; }
+  .info .ur { color: var(--muted); font-size: .78rem; word-break: break-all; }
+
+  .res { text-align: right; white-space: nowrap; }
+  .res .st { font-weight: 700; font-size: .9rem; }
+  .res .st.up { color: var(--up); }
+  .res .st.down { color: var(--down); }
+  .res .tm { color: var(--muted); font-size: .76rem; }
+
+  .del {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-size: .9rem;
+    flex-shrink: 0;
+    transition: border-color .12s ease, color .12s ease;
+  }
+  .del:hover { border-color: var(--down); color: var(--down); }
+
+  .empty { color: var(--muted); text-align: center; padding: 16px 0; }
+  .sect { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 4px 0 8px; }
+
+  #history { list-style: none; font-size: .85rem; }
+  #history li { padding: 4px 2px; }
+  #history li.up { color: var(--up); }
+  #history li.down { color: var(--down); }
+  #history .h { color: var(--muted); font-size: .75rem; }
+
+  #note {
+    background: rgba(76, 99, 140, .15);
+    border: 1px solid rgba(76, 99, 140, .4);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: .8rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>📡 Uptime Monitor</h1>
+  </header>
+
+  <div id="note">
+    Browsers can't reach other websites directly (CORS), so this version checks through a free proxy.
+    Works when opened in your browser with internet. For the most accurate monitor, use <b>uptime_monitor.py</b>.
+  </div>
+
+  <div class="card">
+    <div class="form">
+      <input class="field" id="name" placeholder="Name" />
+      <input class="field" id="url" placeholder="https://…" />
+      <button class="btn btn-primary" id="add">➕ Add</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <button class="btn btn-primary" id="start">▶️ Start</button>
+      <button class="btn btn-ghost" id="checkNow">🔁 Check now</button>
+      <span style="color:var(--muted);font-size:.85rem">every</span>
+      <input class="field" id="interval" value="30" style="width:64px;padding:10px;text-align:center" />
+      <span style="color:var(--muted);font-size:.85rem">sec</span>
+      <div id="summary"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sect">Websites</div>
+    <ul id="list"></ul>
+  </div>
+
+  <div class="card">
+    <div class="sect">History</div>
+    <ul id="history"></ul>
+  </div>
+
+</div>
+
+<script>
+const KEY = "uptime_sites_v1";
+let sites = load();
+let status = {};
+let history = [];
+let running = false;
+let timer = null;
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || []; }
+  catch (e) { return []; }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(sites)); } catch (e) {}
+}
+
+function norm(url) {
+  url = url.trim();
+  if (!url) return "";
+  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+  return url;
+}
+
+// Check through a public CORS proxy (allorigins)
+async function check(site) {
+  const start = performance.now();
+  try {
+    const r = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(site.url));
+    const data = await r.json();
+    const code = data && data.status ? data.status.http_code : null;
+    const ms = Math.round(performance.now() - start);
+    return { name: site.name, url: site.url, ok: code !== null && code < 400, code, ms };
+  } catch (err) {
+    const ms = Math.round(performance.now() - start);
+    return { name: site.name, url: site.url, ok: false, code: null, ms, err: err.message };
+  }
+}
+
+async function checkAll() {
+  for (const s of sites) {
+    const r = await check(s);
+    apply(r);
+  }
+}
+
+function apply(r) {
+  const prev = status[r.url];
+  if (prev && prev.ok !== r.ok) {
+    const ev = r.ok ? "UP" : "DOWN";
+    history.unshift({ ts: new Date(), name: r.name, event: ev, code: r.code, ms: r.ms });
+    if (history.length > 50) history.pop();
+  }
+  r.time = new Date();
+  status[r.url] = r;
+  renderList();
+  renderHistory();
+  renderSummary();
+}
+
+/* ---------- render ---------- */
+function renderList() {
+  const list = document.getElementById("list");
+  if (!sites.length) {
+    list.innerHTML = '<li class="empty">No websites yet</li>';
+    return;
+  }
+  list.innerHTML = sites.map(s => {
+    const r = status[s.url];
+    let cls = "idle", st = "—", sub = "not checked";
+    if (r) {
+      cls = r.ok ? "up" : "down";
+      st = r.ok ? (r.code + " · " + r.ms + " ms") : (r.code ? "HTTP " + r.code : "Error");
+      sub = r.time ? r.time.toLocaleTimeString() : "";
+    }
+    return `<li>
+              <span class="dot ${cls}"></span>
+              <span class="info">
+                <div class="nm">${escapeHtml(s.name)}</div>
+                <div class="ur">${escapeHtml(s.url)}</div>
+              </span>
+              <span class="res">
+                <div class="st ${cls}">${st}</div>
+                <div class="tm">${sub}</div>
+              </span>
+              <button class="del" data-url="${escapeHtml(s.url)}">✕</button>
+            </li>`;
+  }).join("");
+}
+
+function renderHistory() {
+  const h = document.getElementById("history");
+  h.innerHTML = history.length
+    ? history.map(e => {
+        const t = e.ts.toLocaleString();
+        return `<li class="${e.event.toLowerCase()}">
+                  ${e.event === "UP" ? "⬆️" : "⬇️"} <span class="h">${t}</span> ${escapeHtml(e.name)}
+                  ${e.code ? "· " + e.code : ""} ${e.ms ? "· " + e.ms + " ms" : ""}
+                </li>`;
+      }).join("")
+    : '<li class="empty">No events yet</li>';
+}
+
+function renderSummary() {
+  const up = Object.values(status).filter(r => r.ok).length;
+  const down = Object.values(status).length - up;
+  document.getElementById("summary").innerHTML =
+    `<span style="color:var(--up)">${up} up</span> <span style="color:var(--muted)">·</span> <span style="color:var(--down)">${down} down</span>`;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ---------- actions ---------- */
+document.getElementById("add").addEventListener("click", () => {
+  const url = norm(document.getElementById("url").value);
+  if (!url) return;
+  const name = document.getElementById("name").value.trim() || url;
+  if (sites.some(s => s.url === url)) return;
+  sites.push({ name, url });
+  save();
+  document.getElementById("name").value = "";
+  document.getElementById("url").value = "";
+  renderList();
+});
+
+document.getElementById("url").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("add").click();
+});
+
+document.getElementById("list").addEventListener("click", e => {
+  const b = e.target.closest(".del");
+  if (!b) return;
+  sites = sites.filter(s => s.url !== b.dataset.url);
+  delete status[b.dataset.url];
+  save();
+  renderList();
+  renderSummary();
+});
+
+document.getElementById("checkNow").addEventListener("click", checkAll);
+
+document.getElementById("start").addEventListener("click", () => {
+  running = !running;
+  document.getElementById("start").textContent = running ? "⏹ Stop" : "▶️ Start";
+  if (running) {
+    checkAll();
+    timer = setInterval(checkAll, Math.max(3, Number(document.getElementById("interval").value) || 30) * 1000);
+  } else {
+    clearInterval(timer);
+  }
+});
+
+/* ---------- start ---------- */
+renderList();
+renderHistory();
+renderSummary();
+</script>
+</body>
+</html>
